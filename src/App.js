@@ -11,9 +11,12 @@ function App() {
 
   function handleSubmit(event) {
     event.preventDefault();
+    const parsedHours = parseFloat(hours);
+    if (isNaN(parsedHours) || parsedHours < 0) return;
     const newEntry = {
+      id: Date.now(),
       description,
-      hours: parseFloat(hours),
+      hours: parsedHours,
       date: new Date().toISOString(),
     };
     const updatedEntries = [...entries, newEntry];
@@ -49,7 +52,7 @@ function App() {
       </form>
       <div id="entries">
         {entries.map((entry, index) => (
-          <div key={index}>
+          <div key={entry.id}>
             {entry.date}: {entry.description} - {entry.hours} hours
           </div>
         ))}
