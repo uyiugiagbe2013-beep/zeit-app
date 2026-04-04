@@ -68,6 +68,7 @@ export default function App() {
         <input
           style={styles.input}
           type="number"
+          min="0"
           value={pause}
           onChange={(e) => setPause(Number(e.target.value))}
         />
