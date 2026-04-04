@@ -2,6 +2,11 @@ import { useEffect, useMemo, useState } from "react";
 
 const STORAGE_KEY = "zeitApp";
 
+const elevated = {
+  boxShadow: "0 10px 30px rgba(0,0,0,0.4)",
+  borderRadius: 20,
+};
+
 function safeParse(json) {
   try {
     return json ? JSON.parse(json) : null;
@@ -136,9 +141,9 @@ const styles = {
     flexWrap: "wrap",
   },
   stat: {
+    ...elevated,
     background: "#1e293b",
     padding: 15,
-    borderRadius: 12,
     flex: "1 1 140px",
     textAlign: "center",
   },
@@ -151,9 +156,9 @@ const styles = {
     margin: "6px 0 0",
   },
   card: {
+    ...elevated,
     background: "#1e293b",
     padding: 20,
-    borderRadius: 12,
     display: "flex",
     flexDirection: "column",
     gap: 10,
