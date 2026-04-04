@@ -1,39 +1,67 @@
-import { useState, useEffect } from "react";
+import { useEffect, useMemo, useState } from "react";
+
+const STORAGE_KEY = "zeitApp";
+
+function safeParse(json) {
+  try {
+    return json ? JSON.parse(json) : null;
+  } catch {
+    return null;
+  }
+}
+
+function clampNumber(value, { min = -Infinity, max = Infinity } = {}) {
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n)) return 0;
+  return Math.min(max, Math.max(min, n));
+}
+
+function calcHours({ start, end, pauseMinutes }) {
+  if (!start || !end) return 0;
+
+  // Interpret times as HH:mm. Handle overnight shifts (end < start).
+  const s = new Date(`1970-01-01T${start}:00`);
+  const e = new Date(`1970-01-01T${end}:00`);
+
+  let diff = (e - s) / (1000 * 60 * 60);
+  if (diff < 0) diff += 24;
+
+  diff -= pauseMinutes / 60;
+
+  // Avoid negative worked time.
+  return Math.max(0, diff);
+}
 
 export default function App() {
   const [start, setStart] = useState("");
   const [end, setEnd] = useState("");
   const [pause, setPause] = useState(0);
 
+  // Load persisted state on mount (guard against invalid JSON).
   useEffect(() => {
-    const saved = JSON.parse(localStorage.getItem("zeitApp"));
-    if (saved) {
-      setStart(saved.start);
-      setEnd(saved.end);
-      setPause(saved.pause);
+    const saved = safeParse(localStorage.getItem(STORAGE_KEY));
+    if (saved && typeof saved === "object") {
+      if (typeof saved.start === "string") setStart(saved.start);
+      if (typeof saved.end === "string") setEnd(saved.end);
+      if (saved.pause !== undefined) setPause(clampNumber(saved.pause, { min: 0, max: 24 * 60 }));
     }
   }, []);
 
+  // Persist state.
   useEffect(() => {
     localStorage.setItem(
-      "zeitApp",
-      JSON.stringify({ start, end, pause })
+      STORAGE_KEY,
+      JSON.stringify({ start, end, pause: clampNumber(pause, { min: 0, max: 24 * 60 }) })
     );
   }, [start, end, pause]);
 
-  const calcHours = () => {
-    if (!start || !end) return 0;
+  const pauseMinutes = useMemo(() => clampNumber(pause, { min: 0, max: 24 * 60 }), [pause]);
 
-    const s = new Date(`1970-01-01T${start}`);
-    const e = new Date(`1970-01-01T${end}`);
+  const ist = useMemo(
+    () => calcHours({ start, end, pauseMinutes }),
+    [start, end, pauseMinutes]
+  );
 
-    let diff = (e - s) / (1000 * 60 * 60);
-    diff -= pause / 60;
-
-    return diff;
-  };
-
-  const ist = calcHours();
   const soll = 8;
   const ueber = ist - soll;
 
@@ -41,23 +69,40 @@ export default function App() {
     <div style={styles.container}>
       <h1 style={styles.title}>⏱ Zeiterfassung</h1>
 
-      {/* DASHBOARD */}
       <div style={styles.dashboard}>
-        <Card title="Ist" value={ist.toFixed(2) + "h"} />
-        <Card title="Soll" value={soll + "h"} />
-        <Card title="Überstunden" value={ueber.toFixed(2) + "h"} />
+        <Card title="Ist" value={`${ist.toFixed(2)}h`} />
+        <Card title="Soll" value={`${soll}h`} />
+        <Card title="Überstunden" value={`${ueber.toFixed(2)}h`} />
       </div>
 
-      {/* INPUTS */}
       <div style={styles.card}>
         <label>Start</label>
-        <input type="time" value={start} onChange={(e) => setStart(e.target.value)} />
+        <input
+          type="time"
+          value={start}
+          onChange={(e) => setStart(e.target.value)}
+        />
 
         <label>Ende</label>
-        <input type="time" value={end} onChange={(e) => setEnd(e.target.value)} />
+        <input
+          type="time"
+          value={end}
+          onChange={(e) => setEnd(e.target.value)}
+        />
 
         <label>Pause (Min)</label>
-        <input type="number" value={pause} onChange={(e) => setPause(e.target.value)} />
+        <input
+          type="number"
+          min={0}
+          step={1}
+          value={pauseMinutes}
+          onChange={(e) => setPause(e.target.value)}
+        />
+
+        <small style={styles.help}>
+          Hinweis: Wenn die Endzeit vor der Startzeit liegt, wird eine Nachtschicht
+          angenommen (Über-Mitternacht).
+        </small>
       </div>
     </div>
   );
@@ -67,7 +112,7 @@ function Card({ title, value }) {
   return (
     <div style={styles.stat}>
       <p style={styles.statTitle}>{title}</p>
-      <h2>{value}</h2>
+      <h2 style={styles.statValue}>{value}</h2>
     </div>
   );
 }
@@ -78,27 +123,32 @@ const styles = {
     background: "#0f172a",
     color: "white",
     padding: 20,
-    fontFamily: "sans-serif"
+    fontFamily: "sans-serif",
   },
   title: {
     fontSize: 24,
-    marginBottom: 20
+    marginBottom: 20,
   },
   dashboard: {
     display: "flex",
     gap: 10,
-    marginBottom: 20
+    marginBottom: 20,
+    flexWrap: "wrap",
   },
   stat: {
     background: "#1e293b",
     padding: 15,
     borderRadius: 12,
-    flex: 1,
-    textAlign: "center"
+    flex: "1 1 140px",
+    textAlign: "center",
   },
   statTitle: {
     color: "#94a3b8",
-    fontSize: 12
+    fontSize: 12,
+    margin: 0,
+  },
+  statValue: {
+    margin: "6px 0 0",
   },
   card: {
     background: "#1e293b",
@@ -106,43 +156,12 @@ const styles = {
     borderRadius: 12,
     display: "flex",
     flexDirection: "column",
-    gap: 10
-  }
-};// Full Time Tracking Implementation
-
-const timeEntries = JSON.parse(localStorage.getItem('timeEntries')) || [];
-
-// Function to add a time entry
-function addTimeEntry(description, hours) {
-    const entry = { description, hours, date: new Date().toISOString() };
-    timeEntries.push(entry);
-    localStorage.setItem('timeEntries', JSON.stringify(timeEntries));
-}
-
-// Function to calculate total hours
-function calculateTotalHours() {
-    return timeEntries.reduce((total, entry) => total + entry.hours, 0);
-}
-
-// Function to display time entries
-function displayTimeEntries() {
-    const entriesContainer = document.getElementById('entries');
-    entriesContainer.innerHTML = '';
-    timeEntries.forEach(entry => {
-        const entryElement = document.createElement('div');
-        entryElement.innerText = `${entry.date}: ${entry.description} - ${entry.hours} hours`;
-        entriesContainer.appendChild(entryElement);
-    });
-}
-
-// Event listener for adding an entry
-document.getElementById('add-entry-form').addEventListener('submit', function (event) {
-    event.preventDefault();
-    const description = event.target.description.value;
-    const hours = parseFloat(event.target.hours.value);
-    addTimeEntry(description, hours);
-    displayTimeEntries();
-    console.log(`Total hours: ${calculateTotalHours()}`);
-});
-
-displayTimeEntries();
+    gap: 10,
+    maxWidth: 420,
+  },
+  help: {
+    color: "#94a3b8",
+    fontSize: 12,
+    lineHeight: 1.4,
+  },
+};
