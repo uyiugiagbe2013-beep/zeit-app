@@ -16,7 +16,7 @@ function buildCSV(entries) {
       end: e.end,
       pauseMinutes: Number(e.pauseMinutes) || 0,
     });
-    const note = (e.note || "").replace(/"/g, '""');
+    const note = (e.note || "").replace(/"/g, '""').replace(/\r?\n/g, " ");
     return `${e.date},${e.start},${e.end},${e.pauseMinutes || 0},${h.toFixed(2)},"${note}"`;
   });
   return [header, ...rows].join("\r\n");

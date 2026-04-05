@@ -46,10 +46,11 @@ export default function App() {
   // --- Selected date (calendar / weekly view) ---
   const [selectedDate, setSelectedDate] = useState(todayStr());
 
-  // --- Calendar month displayed ---
+  // --- Calendar month displayed (year + month combined to avoid split-state issues) ---
   const today = new Date();
-  const [calYear, setCalYear] = useState(today.getFullYear());
-  const [calMonth, setCalMonth] = useState(today.getMonth()); // 0-based
+  const [calYM, setCalYM] = useState({ year: today.getFullYear(), month: today.getMonth() });
+  const calYear = calYM.year;
+  const calMonth = calYM.month;
 
   // --- CSV export scope ---
   const [exportScope, setExportScope] = useState("week"); // "week" | "all"
@@ -172,17 +173,18 @@ export default function App() {
   );
 
   const prevMonth = () => {
-    if (calMonth === 0) { setCalMonth(11); setCalYear((y) => y - 1); }
-    else setCalMonth((m) => m - 1);
+    setCalYM(({ year, month }) =>
+      month === 0 ? { year: year - 1, month: 11 } : { year, month: month - 1 }
+    );
   };
   const nextMonth = () => {
-    if (calMonth === 11) { setCalMonth(0); setCalYear((y) => y + 1); }
-    else setCalMonth((m) => m + 1);
+    setCalYM(({ year, month }) =>
+      month === 11 ? { year: year + 1, month: 0 } : { year, month: month + 1 }
+    );
   };
   const goToday = () => {
     const now = new Date();
-    setCalYear(now.getFullYear());
-    setCalMonth(now.getMonth());
+    setCalYM({ year: now.getFullYear(), month: now.getMonth() });
     setSelectedDate(todayStr());
   };
 
