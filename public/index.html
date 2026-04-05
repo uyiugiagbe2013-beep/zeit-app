@@ -1,7 +1,24 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Zeit App</title>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Zeiterfassung</title>
+    <style>
+      * { box-sizing: border-box; }
+      body { margin: 0; background: #0f172a; }
+      input[type="date"]::-webkit-calendar-picker-indicator,
+      input[type="time"]::-webkit-calendar-picker-indicator { filter: invert(1); }
+      @media print {
+        .print-hidden { display: none !important; }
+        .print-only { display: block !important; }
+        body { background: white; color: black; }
+        #root > div { background: white; color: black; max-width: 100%; padding: 16px; }
+      }
+      @media screen {
+        .print-only { display: none !important; }
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>
